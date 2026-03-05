@@ -1,1 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Tetris風ゲーム</title>
 
+<style>
+body{
+    margin:0;
+    background:#111;
+    color:white;
+    font-family:sans-serif;
+    text-align:center;
+}
+
+h1{
+    margin-top:10px;
+}
+
+canvas{
+    background:#000;
+    border:3px solid #555;
+}
+
+.controls{
+    margin-top:15px;
+}
+
+button{
+    font-size:20px;
+    padding:10px 15px;
+    margin:5px;
+    border:none;
+    border-radius:8px;
+    background:#444;
+    color:white;
+}
+
+button:active{
+    background:#888;
+}
+</style>
+</head>
+
+<body>
+
+<h1>テトリス風ゲーム</h1>
+
+<canvas id="game" width="240" height="400"></canvas>
+
+<div class="controls">
+<button onclick="move(-1)">⬅️</button>
+<button onclick="rotate()">🔄</button>
+<button onclick="move(1)">➡️</button>
+<button onclick="drop()">⬇️</button>
+</div>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const ROWS = 20;
+const COLS = 12;
+const SIZE = 20;
+
+let board = Array.from({length:ROWS},()=>Array(COLS).fill(0));
+
+const pieces = [
+[[1,1,1,1]],
+[[1,1],[1,1]],
+[[0,1,0],[1,1,1]],
+[[1,1,0],[0,1,1]],
+[[0,1,1],[1,1,0]],
+[[1,0,0],[1,1,1]],
+[[0,0,1],[1,1,1]]
+];
+
+let piece = randomPiece();
+
+function randomPiece(){
+    const shape = pieces[Math.floor(Math.random()*pieces.length)];
+    return {
+        x:4,
+        y:0,
+        shape:shape
+    };
+}
+
+function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    for(let y=0;y<ROWS;y++){
+        for(let x=0;x<COLS;x++){
+            if(board[y][x]){
+                drawBlock(x,y);
+            }
+        }
+    }
+
+    piece.shape.forEach((row,y)=>{
+        row.forEach((value,x)=>{
+            if(value){
+                drawBlock(piece.x+x,piece.y+y);
+            }
+        });
+    });
+}
+
+function drawBlock(x,y){
+    ctx.fillStyle="#00f0ff";
+    ctx.fillRect(x*SIZE,y*SIZE,SIZE-1,SIZE-1);
+}
+
+function collide(px,py,shape){
+    for(let y=0;y<shape.length;y++){
+        for(let x=0;x<shape[y].length;x++){
+            if(shape[y][x]){
+                let nx=px+x;
+                let ny=py+y;
+
+                if(nx<0||nx>=COLS||ny>=ROWS) return true;
+                if(ny>=0 && board[ny][nx]) return true;
+            }
+        }
+    }
+    return false;
+}
+
+function merge(){
+    piece.shape.forEach((row,y)=>{
+        row.forEach((value,x)=>{
+            if(value){
+                board[piece.y+y][piece.x+x]=1;
+            }
+        });
+    });
+}
+
+function move(dir){
+    if(!collide(piece.x+dir,piece.y,piece.shape)){
+        piece.x+=dir;
+    }
+}
+
+function rotate(){
+    const rotated = piece.shape[0].map((_,i)=>piece.shape.map(r=>r[i]).reverse());
+    if(!collide(piece.x,piece.y,rotated)){
+        piece.shape=rotated;
+    }
+}
+
+function drop(){
+    if(!collide(piece.x,piece.y+1,piece.shape)){
+        piece.y++;
+    }else{
+        merge();
+        clearLines();
+        piece=randomPiece();
+    }
+}
+
+function clearLines(){
+    board = board.filter(row=>row.some(cell=>!cell));
+    while(board.length<ROWS){
+        board.unshift(Array(COLS).fill(0));
+    }
+}
+
+document.addEventListener("keydown",e=>{
+    if(e.key==="ArrowLeft") move(-1);
+    if(e.key==="ArrowRight") move(1);
+    if(e.key==="ArrowDown") drop();
+    if(e.key==="ArrowUp") rotate();
+});
+
+function update(){
+    drop();
+    draw();
+}
+
+setInterval(update,700);
+
+</script>
+
+</body>
+</html>
