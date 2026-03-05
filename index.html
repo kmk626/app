@@ -2,56 +2,57 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>カートゲーム</title>
+<title>Tetris風ゲーム</title>
 
 <style>
 body{
-margin:0;
-background:#87ceeb;
-font-family:sans-serif;
-text-align:center;
-overflow:hidden;
+    margin:0;
+    background:#111;
+    color:white;
+    font-family:sans-serif;
+    text-align:center;
 }
 
 h1{
-color:white;
-margin:10px;
+    margin-top:10px;
 }
 
 canvas{
-background:#66c266;
-border:3px solid #333;
+    background:#000;
+    border:3px solid #555;
 }
 
 .controls{
-margin-top:10px;
+    margin-top:15px;
 }
 
 button{
-font-size:22px;
-padding:12px 18px;
-margin:5px;
-border:none;
-border-radius:10px;
-background:#333;
-color:white;
+    font-size:20px;
+    padding:10px 15px;
+    margin:5px;
+    border:none;
+    border-radius:8px;
+    background:#444;
+    color:white;
 }
 
 button:active{
-background:#777;
+    background:#888;
 }
 </style>
 </head>
 
 <body>
 
-<h1>マリオカート風レーシング</h1>
+<h1>テトリス風ゲーム</h1>
 
-<canvas id="game" width="400" height="300"></canvas>
+<canvas id="game" width="240" height="400"></canvas>
 
 <div class="controls">
-<button onclick="left()">⬅️</button>
-<button onclick="right()">➡️</button>
+<button onclick="move(-1)">⬅️</button>
+<button onclick="rotate()">🔄</button>
+<button onclick="move(1)">➡️</button>
+<button onclick="drop()">⬇️</button>
 </div>
 
 <script>
@@ -59,126 +60,126 @@ background:#777;
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let playerX = 0;
-let speed = 5;
-let roadOffset = 0;
+const ROWS = 20;
+const COLS = 12;
+const SIZE = 20;
 
-let obstacles = [];
+let board = Array.from({length:ROWS},()=>Array(COLS).fill(0));
 
-function spawnObstacle(){
-obstacles.push({
-x:Math.random()*2-1,
-z:100
-});
-}
+const pieces = [
+[[1,1,1,1]],
+[[1,1],[1,1]],
+[[0,1,0],[1,1,1]],
+[[1,1,0],[0,1,1]],
+[[0,1,1],[1,1,0]],
+[[1,0,0],[1,1,1]],
+[[0,0,1],[1,1,1]]
+];
 
-setInterval(spawnObstacle,1500);
+let piece = randomPiece();
 
-function drawRoad(){
-
-roadOffset += speed;
-
-for(let i=0;i<30;i++){
-
-let z = i*20 - (roadOffset%20);
-
-let scale = 300/(z+200);
-
-let roadWidth = 200*scale;
-
-let x = canvas.width/2 - roadWidth/2 + playerX*100;
-
-let y = canvas.height - z;
-
-ctx.fillStyle = "#555";
-ctx.fillRect(x,y,roadWidth,4);
-
-}
-
-}
-
-function drawPlayer(){
-
-ctx.fillStyle="red";
-
-ctx.fillRect(canvas.width/2 + playerX*100 -10,canvas.height-40,20,20);
-
-}
-
-function drawObstacles(){
-
-ctx.fillStyle="yellow";
-
-obstacles.forEach(o=>{
-
-o.z -= speed;
-
-let scale = 300/(o.z+200);
-
-let x = canvas.width/2 + o.x*100*scale + playerX*100 -10;
-
-let y = canvas.height - o.z;
-
-ctx.fillRect(x,y,20*scale,20*scale);
-
-});
-
-obstacles = obstacles.filter(o=>o.z>0);
-
-}
-
-function checkCollision(){
-
-obstacles.forEach(o=>{
-
-if(o.z<40 && o.z>10){
-
-if(Math.abs(o.x-playerX)<0.2){
-
-alert("クラッシュ！");
-location.reload();
-
-}
-
-}
-
-});
-
+function randomPiece(){
+    const shape = pieces[Math.floor(Math.random()*pieces.length)];
+    return {
+        x:4,
+        y:0,
+        shape:shape
+    };
 }
 
 function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(let y=0;y<ROWS;y++){
+        for(let x=0;x<COLS;x++){
+            if(board[y][x]){
+                drawBlock(x,y);
+            }
+        }
+    }
 
-drawRoad();
-
-drawObstacles();
-
-drawPlayer();
-
-checkCollision();
-
-requestAnimationFrame(draw);
-
+    piece.shape.forEach((row,y)=>{
+        row.forEach((value,x)=>{
+            if(value){
+                drawBlock(piece.x+x,piece.y+y);
+            }
+        });
+    });
 }
 
-draw();
-
-function left(){
-playerX -= 0.1;
+function drawBlock(x,y){
+    ctx.fillStyle="#00f0ff";
+    ctx.fillRect(x*SIZE,y*SIZE,SIZE-1,SIZE-1);
 }
 
-function right(){
-playerX += 0.1;
+function collide(px,py,shape){
+    for(let y=0;y<shape.length;y++){
+        for(let x=0;x<shape[y].length;x++){
+            if(shape[y][x]){
+                let nx=px+x;
+                let ny=py+y;
+
+                if(nx<0||nx>=COLS||ny>=ROWS) return true;
+                if(ny>=0 && board[ny][nx]) return true;
+            }
+        }
+    }
+    return false;
+}
+
+function merge(){
+    piece.shape.forEach((row,y)=>{
+        row.forEach((value,x)=>{
+            if(value){
+                board[piece.y+y][piece.x+x]=1;
+            }
+        });
+    });
+}
+
+function move(dir){
+    if(!collide(piece.x+dir,piece.y,piece.shape)){
+        piece.x+=dir;
+    }
+}
+
+function rotate(){
+    const rotated = piece.shape[0].map((_,i)=>piece.shape.map(r=>r[i]).reverse());
+    if(!collide(piece.x,piece.y,rotated)){
+        piece.shape=rotated;
+    }
+}
+
+function drop(){
+    if(!collide(piece.x,piece.y+1,piece.shape)){
+        piece.y++;
+    }else{
+        merge();
+        clearLines();
+        piece=randomPiece();
+    }
+}
+
+function clearLines(){
+    board = board.filter(row=>row.some(cell=>!cell));
+    while(board.length<ROWS){
+        board.unshift(Array(COLS).fill(0));
+    }
 }
 
 document.addEventListener("keydown",e=>{
-
-if(e.key==="ArrowLeft") left();
-
-if(e.key==="ArrowRight") right();
-
+    if(e.key==="ArrowLeft") move(-1);
+    if(e.key==="ArrowRight") move(1);
+    if(e.key==="ArrowDown") drop();
+    if(e.key==="ArrowUp") rotate();
 });
+
+function update(){
+    drop();
+    draw();
+}
+
+setInterval(update,700);
 
 </script>
 
