@@ -2,23 +2,24 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>マリオ風ジャンプゲーム</title>
+<title>マリオカート風ゲーム</title>
 
 <style>
 body{
 margin:0;
-background:#5ec0ff;
+background:#87ceeb;
 font-family:sans-serif;
 text-align:center;
+overflow:hidden;
 }
 
 h1{
-margin:10px;
 color:white;
+margin:10px;
 }
 
 canvas{
-background:#87ceeb;
+background:#66c266;
 border:3px solid #333;
 }
 
@@ -28,7 +29,7 @@ margin-top:10px;
 
 button{
 font-size:22px;
-padding:12px 16px;
+padding:12px 18px;
 margin:5px;
 border:none;
 border-radius:10px;
@@ -44,14 +45,13 @@ background:#777;
 
 <body>
 
-<h1>マリオ風ジャンプゲーム</h1>
+<h1>マリオカート風レーシング</h1>
 
-<canvas id="game" width="400" height="250"></canvas>
+<canvas id="game" width="400" height="300"></canvas>
 
 <div class="controls">
-<button onclick="moveLeft()">⬅️</button>
-<button onclick="jump()">⬆️</button>
-<button onclick="moveRight()">➡️</button>
+<button onclick="left()">⬅️</button>
+<button onclick="right()">➡️</button>
 </div>
 
 <script>
@@ -59,109 +59,124 @@ background:#777;
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let player = {
-x:50,
-y:150,
-w:20,
-h:20,
-vx:0,
-vy:0,
-jump:false
-};
+let playerX = 0;
+let speed = 5;
+let roadOffset = 0;
 
-let gravity = 0.5;
-let cameraX = 0;
+let obstacles = [];
 
-let platforms = [
-{x:0,y:200,w:300,h:20},
-{x:350,y:180,w:120,h:20},
-{x:520,y:160,w:120,h:20},
-{x:700,y:200,w:200,h:20},
-{x:950,y:150,w:120,h:20},
-{x:1100,y:200,w:300,h:20}
-];
+function spawnObstacle(){
+obstacles.push({
+x:Math.random()*2-1,
+z:100
+});
+}
+
+setInterval(spawnObstacle,1500);
+
+function drawRoad(){
+
+roadOffset += speed;
+
+for(let i=0;i<30;i++){
+
+let z = i*20 - (roadOffset%20);
+
+let scale = 300/(z+200);
+
+let roadWidth = 200*scale;
+
+let x = canvas.width/2 - roadWidth/2 + playerX*100;
+
+let y = canvas.height - z;
+
+ctx.fillStyle = "#555";
+ctx.fillRect(x,y,roadWidth,4);
+
+}
+
+}
 
 function drawPlayer(){
+
 ctx.fillStyle="red";
-ctx.fillRect(player.x-cameraX,player.y,player.w,player.h);
+
+ctx.fillRect(canvas.width/2 + playerX*100 -10,canvas.height-40,20,20);
+
 }
 
-function drawPlatforms(){
-ctx.fillStyle="#654321";
+function drawObstacles(){
 
-platforms.forEach(p=>{
-ctx.fillRect(p.x-cameraX,p.y,p.w,p.h);
-});
-}
+ctx.fillStyle="yellow";
 
-function update(){
+obstacles.forEach(o=>{
 
-player.vy += gravity;
+o.z -= speed;
 
-player.x += player.vx;
-player.y += player.vy;
+let scale = 300/(o.z+200);
 
-player.jump = true;
+let x = canvas.width/2 + o.x*100*scale + playerX*100 -10;
 
-platforms.forEach(p=>{
-if(
-player.x < p.x + p.w &&
-player.x + player.w > p.x &&
-player.y + player.h < p.y + 10 &&
-player.y + player.h + player.vy >= p.y
-){
-player.y = p.y - player.h;
-player.vy = 0;
-player.jump = false;
-}
+let y = canvas.height - o.z;
+
+ctx.fillRect(x,y,20*scale,20*scale);
+
 });
 
-if(player.x - cameraX > 250){
-cameraX = player.x - 250;
+obstacles = obstacles.filter(o=>o.z>0);
+
 }
 
-player.vx *= 0.8;
+function checkCollision(){
+
+obstacles.forEach(o=>{
+
+if(o.z<40 && o.z>10){
+
+if(Math.abs(o.x-playerX)<0.2){
+
+alert("クラッシュ！");
+location.reload();
+
+}
+
+}
+
+});
+
 }
 
 function draw(){
 
 ctx.clearRect(0,0,canvas.width,canvas.height);
 
-drawPlatforms();
+drawRoad();
+
+drawObstacles();
+
 drawPlayer();
 
+checkCollision();
+
+requestAnimationFrame(draw);
+
 }
 
-function loop(){
-update();
 draw();
-requestAnimationFrame(loop);
+
+function left(){
+playerX -= 0.1;
 }
 
-loop();
-
-function moveLeft(){
-player.vx = -3;
-}
-
-function moveRight(){
-player.vx = 3;
-}
-
-function jump(){
-if(!player.jump){
-player.vy = -10;
-player.jump = true;
-}
+function right(){
+playerX += 0.1;
 }
 
 document.addEventListener("keydown",e=>{
 
-if(e.key==="ArrowLeft") player.vx=-3;
+if(e.key==="ArrowLeft") left();
 
-if(e.key==="ArrowRight") player.vx=3;
-
-if(e.key==="ArrowUp") jump();
+if(e.key==="ArrowRight") right();
 
 });
 
